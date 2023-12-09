@@ -6,9 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <RootNamespace>_60_buttons_api</RootNamespace>
         <InvariantGlobalization>true</InvariantGlobalization>
-        <PublishAot>true</PublishAot>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-        <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
     </PropertyGroup>
 
 </Project>
