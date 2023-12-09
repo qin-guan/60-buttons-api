@@ -1,4 +1,6 @@
-var builder = WebApplication.CreateSlimBuilder(args);
+using System.Text.Json;
+
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton<GameService>();
 
@@ -8,8 +10,9 @@ builder.Services.AddCors(options =>
     {
         policy.AllowCredentials();
         policy.WithOrigins(
-            builder.Configuration.GetValue<string[]>("Cors.Origins", new[] { "http://localhost:3000" }) ??
-            throw new InvalidOperationException());
+            builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+            ?? throw new InvalidOperationException()
+        );
         policy.AllowAnyMethod();
         policy.AllowAnyHeader();
     });
