@@ -1,14 +1,25 @@
-public class GameService(IDictionary<string, int> scores)
+public class GameService
 {
-    public void AddPoint(string id)
+    private readonly Random _random = new();
+    public Position Position { get; private set; }
+    public IDictionary<string, int> Scores { get; } = new Dictionary<string, int>();
+
+    public GameService()
     {
-        if (scores.ContainsKey(id))
+        Position = new Position(_random.NextDouble(), _random.NextDouble());
+    }
+
+    public void Click(string connectionId)
+    {
+        if (!Scores.ContainsKey(connectionId))
         {
-            scores.Add(id, 1);
+            Scores.Add(connectionId, 1);
         }
         else
         {
-            scores[id]++;
+            Scores[connectionId]++;
         }
+        
+        Position = new Position(_random.NextDouble(), _random.NextDouble());
     }
 }
