@@ -1,8 +1,14 @@
-using System.Text.Json;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddSingleton<GameService>();
+builder.Services.AddSqlite<AppDbContext>(builder.Configuration.GetConnectionString("App"));
+
+builder.Services.AddSingleton<IMemoryCache, MemoryCache>();
+builder.Services.AddScoped<GameService>();
+builder.Services.AddScoped<PlayerService>();
 
 builder.Services.AddCors(options =>
 {
@@ -22,11 +28,39 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
+using var scope = app.Services.CreateScope();
+{
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+}
+
 app.UseCors();
 
 app.MapHub<PositionHub>("/Position");
 
-app.MapGet("/Players", (GameService gameService) => gameService.Scores);
-app.MapGet("/Live", (GameService gameService) => gameService.Position);
+var game = app.MapGroup("/Game");
+game.MapGet("/Position", (GameService gameService) => gameService.Position);
+game.MapGet("/Leaderboard", async (GameService gameService) => await gameService.Leaderboard());
+
+var player = app.MapGroup("/Player");
+player.MapPost("/", async (PlayerService playerService, HttpRequest request) =>
+{
+    var body = await request.ReadFromJsonAsync<RegisterPlayerDto>();
+    if (body == null) throw new BadHttpRequestException("Invalid body");
+    return await playerService.Register(body.Name);
+});
+player.MapGet("/{id:required}", async (PlayerService playerService, string id) =>
+{
+    if (!Guid.TryParse(id, out var guid))
+    {
+        throw new BadHttpRequestException("Invalid User ID provided");
+    }
+
+    return await playerService.Find(guid);
+});
 
 app.Run();
+
+public record RegisterPlayerDto(
+    [Required] [MinLength(1)] string Name
+);

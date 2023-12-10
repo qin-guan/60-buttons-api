@@ -1,25 +1,26 @@
-public class GameService
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+
+public class GameService(AppDbContext dbContext, IMemoryCache cache)
 {
     private readonly Random _random = new();
-    public Position Position { get; private set; }
-    public IDictionary<string, int> Scores { get; } = new Dictionary<string, int>();
 
-    public GameService()
+    public Position Position =>
+        cache.GetOrCreate("Position", cacheEntry => new Position(_random.NextDouble(), _random.NextDouble())) ??
+        throw new InvalidOperationException();
+
+    public async Task<IEnumerable<Player>> Leaderboard()
     {
-        Position = new Position(_random.NextDouble(), _random.NextDouble());
+        return await dbContext.Players.ToListAsync();
     }
 
-    public void Click(string connectionId)
+    public async Task Click(Guid id)
     {
-        if (!Scores.ContainsKey(connectionId))
-        {
-            Scores.Add(connectionId, 1);
-        }
-        else
-        {
-            Scores[connectionId]++;
-        }
-        
-        Position = new Position(_random.NextDouble(), _random.NextDouble());
+        cache.Set("Position", new Position(_random.NextDouble(), _random.NextDouble()));
+
+        var player = await dbContext.Players.FindAsync(id) ?? throw new InvalidOperationException();
+        player.Score++;
+
+        await dbContext.SaveChangesAsync();
     }
 }
