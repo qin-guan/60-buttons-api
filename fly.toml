@@ -7,7 +7,7 @@ app = "60-buttons-api"
 primary_region = "sin"
 
 [mounts]
-  source="60-buttons-api-data"
+  source="60_buttons_api_data"
   destination="/data"
 
 [env]
