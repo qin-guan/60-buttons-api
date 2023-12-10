@@ -1,14 +1,52 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
+var honeycombOptions = builder.Configuration.GetHoneycombOptions();
 
-builder.Services.AddSqlite<AppDbContext>(builder.Configuration.GetConnectionString("App"));
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeScopes = true;
+    logging.IncludeFormattedMessage = true;
+});
 
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddConsoleExporter()
+            .AddHoneycomb(honeycombOptions)
+            .AddRuntimeInstrumentation()
+            .AddAspNetCoreInstrumentation();
+    })
+    .WithTracing(tracing =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            // We want to view all traces in development
+            tracing.SetSampler(new AlwaysOnSampler());
+        }
+
+        tracing
+            .AddHoneycomb(honeycombOptions)
+            .AddConsoleExporter()
+            .AddAspNetCoreInstrumentation()
+            .AddCommonInstrumentations()
+            .AddEntityFrameworkCoreInstrumentation(options =>
+            {
+                options.SetDbStatementForText = true;
+            });
+    });
+
+builder.Services.AddSingleton(TracerProvider.Default.GetTracer(honeycombOptions.ServiceName));
 builder.Services.AddSingleton<IMemoryCache, MemoryCache>();
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<PlayerService>();
+
+builder.Services.AddSqlite<AppDbContext>(builder.Configuration.GetConnectionString("App"));
 
 builder.Services.AddCors(options =>
 {
