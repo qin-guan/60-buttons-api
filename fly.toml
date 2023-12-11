@@ -6,10 +6,6 @@
 app = "60-buttons-api"
 primary_region = "sin"
 
-[mounts]
-  source="60_buttons_api_data"
-  destination="/data"
-
 [env]
   Cors__Origins__0="https://buttons.qinguan.me"
 
@@ -33,7 +29,7 @@ primary_region = "sin"
   grace_period = "5s"
   method = "get"
   path = "/healthz"
-  protocol = "http"
+  protocol = "https"
   timeout = "2s"
   tls_skip_verify = false
   [services.http_checks.headers]
