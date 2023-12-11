@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Npgsql;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
@@ -17,7 +19,6 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics =>
     {
         metrics
-            .AddConsoleExporter()
             .AddHoneycomb(honeycombOptions)
             .AddRuntimeInstrumentation()
             .AddAspNetCoreInstrumentation();
@@ -32,13 +33,10 @@ builder.Services.AddOpenTelemetry()
 
         tracing
             .AddHoneycomb(honeycombOptions)
-            .AddConsoleExporter()
-            .AddAspNetCoreInstrumentation()
             .AddCommonInstrumentations()
-            .AddEntityFrameworkCoreInstrumentation(options =>
-            {
-                options.SetDbStatementForText = true;
-            });
+            .AddNpgsql()
+            .AddAspNetCoreInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation(options => { options.SetDbStatementForText = true; });
     });
 
 builder.Services.AddSingleton(TracerProvider.Default.GetTracer(honeycombOptions.ServiceName));
@@ -46,7 +44,7 @@ builder.Services.AddSingleton<IMemoryCache, MemoryCache>();
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<PlayerService>();
 
-builder.Services.AddSqlite<AppDbContext>(builder.Configuration.GetConnectionString("App"));
+builder.Services.AddNpgsql<AppDbContext>(builder.Configuration.GetConnectionString("App"));
 
 builder.Services.AddCors(options =>
 {
@@ -63,6 +61,8 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddSignalR();
+
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -96,6 +96,8 @@ player.MapGet("/{id:required}", async (PlayerService playerService, string id) =
 
     return await playerService.Find(guid);
 });
+
+app.MapHealthChecks("/healthz");
 
 app.Run();
 
